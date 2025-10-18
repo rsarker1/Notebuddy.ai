@@ -2,24 +2,15 @@ import os
 import glob
 import faiss
 from langchain_community.vectorstores import FAISS
+from langchain_community.document_loaders import ObsidianLoader
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 
-def load_notes(notes_dir: str):
-    file_paths = glob.glob(os.path.join(notes_dir, "*.md"), recursive=True)
-    documents = []
-    for path in file_paths:
-        with open(path, "r", encoding="utf-8") as f:
-            text = f.read()
-        documents.append(Document(page_content=text, metadata={"source": path}))
-    print(f"✅ Loaded {len(documents)} markdown notes.")
-    return documents
-
 def create_chunks(documents):
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=100
+        chunk_size=500,
+        chunk_overlap=50
     )
     split_docs = text_splitter.split_documents(documents)
     print(f"✅ Split into {len(split_docs)} chunks.")
@@ -36,8 +27,7 @@ def load_vectorstore(index_path="notes_index"):
     return FAISS.load_local(index_path, embeddings, allow_dangerous_deserialization=True)
 
 def query_loop(db):
-    print("\n✅ Ready! Ask questions about your notes.")
-    print("Type 'exit' to quit.\n")
+    print("\n✅ Ready! Test similarity of query text to notes")
 
     while True:
         query = input("You: ").strip()
@@ -65,7 +55,8 @@ def main():
         db = load_vectorstore(index_path)
     else:
         print("Building new vector index from notes...")
-        notes = load_notes(notes_dir)
+        obs_loader = ObsidianLoader(notes_dir)
+        notes = obs_loader.load()
         chunks = create_chunks(notes)
         build_vectorstore(chunks, index_path)
         db = load_vectorstore(index_path)
